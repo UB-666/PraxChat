@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@layer base {
+    :root {
+        /* Modern Clean Dark Theme (Zinc-based) */
+        --bg-background: #09090b;
+        /* Zinc 950 */
+        --bg-surface: #18181b;
+        /* Zinc 900 */
+        --bg-surface-hover: #27272a;
+        /* Zinc 800 */
+
+        --border-color: #27272a;
+        /* Zinc 800 */
+        --border-hover: #3f3f46;
+        /* Zinc 700 */
+
+        /* Text */
+        --text-primary: #fafafa;
+        /* Zinc 50 */
+        --text-secondary: #a1a1aa;
+        /* Zinc 400 */
+        --text-tertiary: #52525b;
+        /* Zinc 600 */
+
+        /* Accents - Sophisticated Indigo */
+        --accent-primary: #6366f1;
+        --accent-hover: #4f46e5;
+        --accent-subtle: rgba(99, 102, 241, 0.1);
+
+        /* Status */
+        --status-online: #10b981;
+        /* Emerald 500 */
+        --status-busy: #ef4444;
+        /* Red 500 */
+
+        /* Layout */
+        --sidebar-width: 320px;
+        --icon-nav-width: 72px;
+        --info-panel-width: 300px;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: var(--bg-background);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow: hidden;
+        /* Prevent body scroll */
+    }
+
+    /* Clean Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--bg-surface-hover);
+        border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-hover);
+    }
+}
+
+@layer utilities {
+    .glass-panel {
+        background: rgba(24, 24, 27, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    .flex-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .transition-base {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
