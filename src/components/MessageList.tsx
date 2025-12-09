@@ -240,123 +240,108 @@ export default function MessageList({
                     <div
                         key={msg.id}
                         className={cn(
-                            "flex w-full",
+                            "flex w-full group/message",
                             msg.sent ? "justify-end" : "justify-start",
-                            isSequence ? "mt-1" : "mt-4"
+                            isSequence ? "mt-1" : "mt-6"
                         )}
                     >
                         <div className={cn(
-                            "max-w-[70%] md:max-w-[60%] relative group",
-                            msg.sent ? "items-end" : "items-start"
+                            "max-w-[85%] md:max-w-[70%] lg:max-w-[60%] relative flex gap-2",
+                            msg.sent ? "flex-row-reverse" : "flex-row"
                         )}>
                             {/* Message Bubble */}
-                            <div className="relative flex items-start gap-1">
-                                {/* Three-dots button (left side for received) */}
-                                {!msg.sent && (
-                                    <button
-                                        onClick={() => toggleMenu(msg.id)}
-                                        className={cn(
-                                            "p-1 rounded-full transition-all self-center",
-                                            isMenuOpen
-                                                ? "bg-zinc-700 opacity-100"
-                                                : "opacity-0 group-hover:opacity-100 hover:bg-zinc-800"
-                                        )}
-                                    >
-                                        <MoreVertical className="w-4 h-4 text-zinc-400" />
-                                    </button>
-                                )}
-
+                            <div className="relative flex flex-col items-end">
                                 <div
                                     ref={(el) => {
                                         if (el) messageRefs.current.set(msg.id, el);
                                     }}
                                     className={cn(
-                                        "px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all",
+                                        "px-4 py-2 text-[15px] leading-relaxed shadow-md transition-all relative break-words min-w-[80px]",
                                         msg.sent
-                                            ? "bg-indigo-600 text-white rounded-2xl rounded-tr-sm"
-                                            : "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-2xl rounded-tl-sm",
+                                            ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl rounded-tr-sm animate-slide-up"
+                                            : "bg-zinc-800/80 text-zinc-100 border border-zinc-700/50 rounded-2xl rounded-tl-sm backdrop-blur-sm animate-slide-up",
                                         // Highlight current match with ring
-                                        isCurrentMatch && "ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-950"
+                                        isCurrentMatch && "ring-2 ring-yellow-400 ring-offset-2 ring-offset-zinc-950 z-10"
                                     )}
                                 >
-                                    {/* Quoted Message */}
+                                    {/* Link Preview / Reply */}
                                     {msg.reply_to && (
                                         <button
                                             onClick={() => scrollToMessage(msg.reply_to!.id)}
                                             className={cn(
-                                                "w-full text-left mb-2 p-2 rounded-lg border-l-2 transition-colors",
+                                                "w-full text-left mb-2 p-2 rounded-lg border-l-2 transition-colors overflow-hidden",
                                                 msg.sent
-                                                    ? "bg-indigo-700/50 border-indigo-400 hover:bg-indigo-700"
-                                                    : "bg-zinc-800 border-zinc-600 hover:bg-zinc-700"
+                                                    ? "bg-indigo-800/40 border-indigo-300/50 hover:bg-indigo-800/60"
+                                                    : "bg-zinc-900/50 border-zinc-600 hover:bg-zinc-900/70"
                                             )}
                                         >
                                             <p className={cn(
-                                                "text-xs font-medium",
-                                                msg.sent ? "text-indigo-300" : "text-zinc-400"
+                                                "text-xs font-bold mb-0.5",
+                                                msg.sent ? "text-indigo-200" : "text-indigo-400"
                                             )}>
                                                 {msg.reply_to.sent ? 'You' : 'Them'}
                                             </p>
                                             <p className={cn(
-                                                "text-xs truncate",
-                                                msg.sent ? "text-indigo-200" : "text-zinc-500"
+                                                "text-xs truncate opacity-90",
+                                                msg.sent ? "text-indigo-100" : "text-zinc-400"
                                             )}>
                                                 {sanitizeHtml(msg.reply_to.content)}
                                             </p>
                                         </button>
                                     )}
 
-                                    {msg.attachment_ptr ? (
-                                        <AttachmentBubble
-                                            jsonContent={msg.content}
-                                            attachmentPath={msg.attachment_ptr}
-                                            sentByMe={msg.sent}
-                                            timestamp={msg.raw_timestamp || new Date().toISOString()}
-                                        />
-                                    ) : (
-                                        highlightText(msg.content, searchTerm)
-                                    )}
-                                </div>
-
-                                {/* Three-dots button (right side for sent) */}
-                                {msg.sent && (
-                                    <button
-                                        onClick={() => toggleMenu(msg.id)}
-                                        className={cn(
-                                            "p-1 rounded-full transition-all self-center",
-                                            isMenuOpen
-                                                ? "bg-zinc-700 opacity-100"
-                                                : "opacity-0 group-hover:opacity-100 hover:bg-zinc-800"
+                                    <div className="mr-10 pb-1"> {/* Spacing for timestamp */}
+                                        {msg.attachment_ptr ? (
+                                            <AttachmentBubble
+                                                jsonContent={msg.content}
+                                                attachmentPath={msg.attachment_ptr}
+                                                sentByMe={msg.sent}
+                                                timestamp={msg.raw_timestamp || new Date().toISOString()}
+                                            />
+                                        ) : (
+                                            highlightText(msg.content, searchTerm)
                                         )}
-                                    >
-                                        <MoreVertical className="w-4 h-4 text-zinc-400" />
-                                    </button>
-                                )}
+                                    </div>
 
-                                {/* Context Menu */}
-                                {isMenuOpen && (
-                                    <MessageMenu
-                                        message={msg}
-                                        position={msg.sent ? 'right' : 'left'}
-                                        onClose={() => setActiveMenuId(null)}
-                                        onReply={onReply}
-                                        onCopy={onCopy}
-                                        onDelete={onDelete}
-                                    />
-                                )}
+                                    {/* Timestamp & Status (Inside Bubble) */}
+                                    <div className={cn(
+                                        "absolute bottom-1.5 right-3 flex items-center gap-1 select-none",
+                                        msg.sent ? "text-indigo-200/80" : "text-zinc-500"
+                                    )}>
+                                        <span className="text-[10px] font-medium tracking-wide">
+                                            {msg.timestamp.replace(/AM|PM/, '')}
+                                        </span>
+                                        {msg.sent && (
+                                            msg.read
+                                                ? <CheckCheck className="w-3 h-3 text-indigo-200" strokeWidth={2.5} />
+                                                : <Check className="w-3 h-3 text-indigo-300" strokeWidth={2.5} />
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Timestamp & Status */}
-                            <div className={cn(
-                                "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity px-1",
-                                msg.sent ? "justify-end" : "justify-start"
-                            )}>
-                                <span className="text-[10px] text-zinc-500">{msg.timestamp}</span>
-                                {msg.sent && (
-                                    msg.read
-                                        ? <CheckCheck className="w-3 h-3 text-indigo-400" />
-                                        : <Check className="w-3 h-3 text-zinc-600" />
+                            {/* Actions Button (visible on hover) */}
+                            <button
+                                onClick={() => toggleMenu(msg.id)}
+                                className={cn(
+                                    "p-1.5 rounded-full transition-all self-center opacity-0 group-hover/message:opacity-100",
+                                    isMenuOpen ? "opacity-100 bg-zinc-800" : "hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300"
                                 )}
-                            </div>
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {/* Context Menu */}
+                            {isMenuOpen && (
+                                <MessageMenu
+                                    message={msg}
+                                    position={msg.sent ? 'right' : 'left'}
+                                    onClose={() => setActiveMenuId(null)}
+                                    onReply={onReply}
+                                    onCopy={onCopy}
+                                    onDelete={onDelete}
+                                />
+                            )}
                         </div>
                     </div>
                 );

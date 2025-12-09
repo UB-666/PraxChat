@@ -10,7 +10,8 @@ export const useAuth = () => {
     const authUser = useMemo(() => {
         return user ? {
             id: user.id,
-            email: user.primaryEmailAddress?.emailAddress
+            email: user.primaryEmailAddress?.emailAddress,
+            imageUrl: user.imageUrl
         } : null;
     }, [user]);
 

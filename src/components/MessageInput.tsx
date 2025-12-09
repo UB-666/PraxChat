@@ -214,9 +214,9 @@ export default function MessageInput({
                     <button
                         onClick={handleSend}
                         disabled={!message.trim()}
-                        className={`p-2 rounded-xl transition-all ${message.trim()
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm'
-                            : 'text-zinc-600 cursor-not-allowed'
+                        className={`p-2 rounded-xl transition-all ml-1 ${message.trim()
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/20 active:scale-95'
+                            : 'text-zinc-600 cursor-not-allowed bg-zinc-900/50'
                             }`}
                         title="Send message"
                     >
@@ -225,7 +225,7 @@ export default function MessageInput({
                 </div>
             </div>
 
-            <div className="text-center mt-2">
+            <div className="text-center mt-2 hidden md:block">
                 <p className="text-[10px] text-zinc-600">
                     Press <kbd className="font-sans bg-zinc-900 px-1 rounded text-zinc-400">Enter</kbd> to send
                 </p>

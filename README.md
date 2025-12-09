@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-19.0-61dafb.svg)
+![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF.svg)
 ![Supabase](https://img.shields.io/badge/Supabase-RLS%20%26%20Realtime-3ecf8e.svg)
 ![Clerk](https://img.shields.io/badge/Auth-Clerk-6c47ff.svg)
 ![Security](https://img.shields.io/badge/Security-E2EE-red.svg)

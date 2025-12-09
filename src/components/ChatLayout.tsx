@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import IconNav, { type NavTab } from './IconNav';
+import BottomNav from './BottomNav';
 import Sidebar from './Sidebar';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
@@ -59,8 +60,8 @@ export default function ChatLayout() {
     // Presence hook for online/offline status
     const { isUserOnline } = usePresence();
 
-    const [activeTab, setActiveTab] = useState<NavTab>('messages'); // New Tab state
-    const [showInfo, setShowInfo] = useState(true);
+    const [activeTab, setActiveTab] = useState<NavTab>('messages');
+    const [showInfo, setShowInfo] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [isVerifying, setIsVerifying] = useState(true);
     const [status, setStatus] = useState('Initializing...');
@@ -85,12 +86,16 @@ export default function ChatLayout() {
     // Reply state
     const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null);
 
+    // Supabase Profile Avatar State
+    const [supabaseAvatar, setSupabaseAvatar] = useState<string | null>(null);
+
     // Wrapped send message that shows toast on error
     const handleSendMessage = useCallback(async (text: string, replyToMessageId?: string) => {
         try {
             await sendMessage(text, undefined, replyToMessageId);
-        } catch (e: any) {
-            showToast(e.message || 'Failed to send message', 'error');
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Failed to send message';
+            showToast(errorMessage, 'error');
         }
     }, [sendMessage, showToast]);
 
@@ -98,12 +103,52 @@ export default function ChatLayout() {
     const handleSendFile = useCallback(async (file: File) => {
         try {
             await sendFile(file);
-        } catch (e: any) {
-            showToast(e.message || 'Failed to send file', 'error');
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Failed to send file';
+            showToast(errorMessage, 'error');
         }
     }, [sendFile, showToast]);
 
     const { user } = useAuth();
+
+    // Fetch Supabase Profile for Avatar
+    // 🚨 Safe implementation to avoid crashes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        let isMounted = true;
+
+        const fetchProfile = async () => {
+            try {
+                // Return type is explicitly compatible with what we expect
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('avatar_url')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error('Error fetching profile avatar:', error);
+                    return;
+                }
+
+                if (isMounted && data) {
+                    // Safe access after verification
+                    // Explicit cast to handle potential type inference issues
+                    setSupabaseAvatar((data as { avatar_url: string | null }).avatar_url);
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching profile:', err);
+            }
+        };
+
+        fetchProfile();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [user?.id]);
+
     // Check for device keys and sync with server
     useEffect(() => {
         // Only verify if we are in verifying state
@@ -111,9 +156,6 @@ export default function ChatLayout() {
 
         const checkRegistration = async () => {
             try {
-                console.log('[ChatLayout] Starting registration check...');
-                console.log('[ChatLayout] User:', user?.id);
-
                 if (!user) {
                     setStatus('Waiting for user (Clerk)...');
                     return;
@@ -122,15 +164,9 @@ export default function ChatLayout() {
                 // Check if verified already (optimization)
                 if (!isVerifying && !isVaultLocked) return;
 
-                // DEBUG: Check what Postgres sees in the token (RLS Debugging)
-                // console.log('[ChatLayout] invoking get_jwt_claims...');
-                // const { data: jwtClaims, error: jwtError } = await supabase.rpc('get_jwt_claims');
-                // if (jwtError) console.error('[ChatLayout] JWT Debug Error:', jwtError);
-
                 // Check if vault exists and is locked
                 const hasVault = await KeyStore.hasVault();
                 if (hasVault && !KeyStore.isVaultUnlocked()) {
-                    console.log('[ChatLayout] Vault is locked, showing unlock screen');
                     setStatus('Vault locked');
                     setIsVaultLocked(true);
                     setIsVerifying(false);
@@ -140,11 +176,9 @@ export default function ChatLayout() {
                 setStatus('Checking local Identity Key...');
                 const idKey = await KeyStore.getIdentityKey();
                 const preKey = await KeyStore.getPreKey(0);
-                // console.log('[ChatLayout] Keys:', idKey ? 'ID Found' : 'ID Missing', preKey ? 'PreKey Found' : 'PreKey Missing');
 
                 if (!idKey || !preKey) {
                     setStatus('Keys incomplete. Redirecting...');
-                    console.warn('[ChatLayout] Missing Identity or PreKey. Redirecting to device registration.');
                     navigate('/register-device');
                     return;
                 }
@@ -159,8 +193,7 @@ export default function ChatLayout() {
 
                 if (deviceError) {
                     setStatus('Server error: ' + deviceError.message);
-                    console.error('Device check error:', deviceError);
-                    return; // Don't redirect loop, just show error
+                    return;
                 }
 
                 const isRegistered = devices?.some(d => d.public_identity_key === idKey.publicKey);
@@ -169,7 +202,6 @@ export default function ChatLayout() {
 
                 if (!isRegistered || !isPreKeyValid) {
                     setStatus(isRegistered ? 'PreKey mismatch. Updating...' : 'Identity mismatch. Registering...');
-                    console.warn(`[ChatLayout] Mismatch: Identity=${isRegistered}, PreKey=${isPreKeyValid}. Redirecting.`);
                     navigate('/register-device');
                     return;
                 }
@@ -223,7 +255,7 @@ export default function ChatLayout() {
     const sidebarConversations = conversations.map(c => ({
         id: c.id,
         name: c.name,
-        lastMessage: '...', // We don't fetch last message content in list yet for simplicity
+        lastMessage: '...',
         time: new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         unread: c.unread_count,
         online: isUserOnline(c.recipient_id),
@@ -274,9 +306,9 @@ export default function ChatLayout() {
     }
 
     return (
-        <div className="flex h-screen w-full bg-zinc-950 text-zinc-50 overflow-hidden">
-            {/* 1. Icon Nav */}
-            <div className="hidden md:block flex-none">
+        <div className="flex h-screen w-full bg-zinc-950 text-zinc-50 overflow-hidden md:flex-row flex-col">
+            {/* 1. Icon Nav (Desktop) */}
+            <div className="hidden md:block flex-none h-full">
                 <IconNav
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
@@ -286,26 +318,24 @@ export default function ChatLayout() {
 
             {/* 2. Sidebar Area (Messages OR Calls) */}
             <div className={cn(
-                "w-full md:w-80 flex-none border-r border-zinc-800 bg-zinc-900 flex flex-col",
-                showSidebar ? "flex" : "hidden md:flex"
+                "md:w-80 flex-none border-r border-zinc-800 bg-zinc-900 flex flex-col h-full",
+                // Mobile: Show if sidebar is active, otherwise hidden
+                showSidebar ? "flex w-full" : "hidden md:flex",
+                // Mobile: adjust height to account for bottom nav
+                "md:h-full h-[calc(100vh-64px)]"
             )}>
                 {activeTab === 'messages' ? (
                     <>
-                        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-white">Messages</h2>
+                        <div className="p-4 border-b border-zinc-800 flex justify-between items-center shrink-0">
+                            <h2 className="text-xl font-bold text-white tracking-tight">Messages</h2>
                             <div className="flex gap-2">
                                 <div className="relative group">
                                     <button
                                         onClick={handleNewChat}
-                                        className="w-8 h-8 flex items-center justify-center bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors text-white"
+                                        className="w-9 h-9 flex items-center justify-center bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-all text-white shadow-lg shadow-indigo-500/20 active:scale-95"
                                     >
-                                        <UserPlus className="w-4 h-4" />
+                                        <UserPlus className="w-5 h-5" />
                                     </button>
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-zinc-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-zinc-700 z-50">
-                                        Find New User
-                                        {/* Little arrow on top */}
-                                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-800 border-t border-l border-zinc-700 rotate-45" />
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -314,7 +344,6 @@ export default function ChatLayout() {
                             activeId={activeConversationId}
                             onSelect={(id) => {
                                 handleSelect(id);
-                                // If on mobile, maybe we want to keep sidebar open? Default behavior is preserved.
                             }}
                             className="flex-1 min-h-0"
                         />
@@ -329,18 +358,14 @@ export default function ChatLayout() {
                 )}
             </div>
 
-            {/* 3. Main Chat (Hidden if Calls tab is strictly focused? Or just overlay?) 
-                Actually for now, let's keep the main chat area static. 
-                If user clicks a call history item, it starts a call, and the active conversation might change?
-                The prompt implies "Sidebar section", so the main view likely stays as the active conversation 
-                or a placeholder if none selected.
-            */}
+            {/* 3. Main Chat */}
             <div className={cn(
-                "flex-1 flex flex-col min-w-0 bg-zinc-950 relative",
-                !showSidebar ? "flex" : "hidden md:flex"
+                "flex-1 flex flex-col min-w-0 bg-zinc-950 relative h-full",
+                // Mobile: Show if sidebar is hidden (meaning chat is active)
+                !showSidebar ? "flex fixed inset-0 z-30" : "hidden md:flex"
             )}>
                 {activeConv ? (
-                    <>
+                    <div key={activeConversationId} className="flex flex-col h-full animate-fade-in w-full">
                         {(() => {
                             // Calculate search matches for current conversation
                             const matchingMessageIds = searchTerm.trim()
@@ -422,29 +447,64 @@ export default function ChatLayout() {
                                 </>
                             );
                         })()}
-                    </>
+                    </div>
                 ) : (
                     <div className="flex-1 flex items-center justify-center flex-col text-zinc-500">
-                        <MessageSquare className="w-12 h-12 mb-4 opacity-50" />
-                        <p>Select a conversation or start a new one</p>
+                        <MessageSquare className="w-16 h-16 mb-6 opacity-20" />
+                        <p className="text-lg font-medium">Select a conversation</p>
+                        <p className="text-sm opacity-60">or start a new one to get messaging</p>
                     </div>
                 )}
             </div>
 
             {/* 4. Info Panel */}
+            {/* Desktop: Static Panel */}
+            <div className="hidden lg:block h-full">
+                {showInfo && activeConv && (
+                    <InfoPanelWrapper
+                        activeConv={activeConv}
+                        startCall={startCall}
+                        blockUser={blockUser}
+                        unblockUser={unblockUser}
+                        isUserBlocked={isUserBlocked}
+                        clearChat={clearChat}
+                        onClose={() => setShowInfo(false)}
+                        onBlockStatusChange={setIsActiveUserBlocked}
+                        callsDisabled={isActiveUserBlocked}
+                    />
+                )}
+            </div>
+
+            {/* Mobile: Modal/Overlay Panel */}
             {showInfo && activeConv && (
-                <InfoPanelWrapper
-                    activeConv={activeConv}
-                    startCall={startCall}
-                    blockUser={blockUser}
-                    unblockUser={unblockUser}
-                    isUserBlocked={isUserBlocked}
-                    clearChat={clearChat}
-                    onClose={() => setShowInfo(false)}
-                    onBlockStatusChange={setIsActiveUserBlocked}
-                    callsDisabled={isActiveUserBlocked}
-                />
+                <div className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in duration-200">
+                    <div className="w-full max-w-sm bg-zinc-900 h-full shadow-2xl animate-in slide-in-from-right duration-300">
+                        <InfoPanel
+                            name={activeConv.name}
+                            recipientId={activeConv.recipient_id}
+                            onClose={() => setShowInfo(false)}
+                            onVideoCall={() => startCall(activeConv.recipient_id, 'video')}
+                            onAudioCall={() => startCall(activeConv.recipient_id, 'audio')}
+                            onBlock={async () => {
+                                await blockUser(activeConv.recipient_id);
+                                setIsActiveUserBlocked(true);
+                            }}
+                            onUnblock={async () => {
+                                await unblockUser(activeConv.recipient_id);
+                                setIsActiveUserBlocked(false);
+                            }}
+                            isBlocked={isActiveUserBlocked}
+                            callsDisabled={isActiveUserBlocked}
+                            onClearChat={async () => {
+                                await clearChat(activeConv.id);
+                            }}
+                        />
+                    </div>
+                    {/* Click outside to close */}
+                    <div className="absolute left-0 top-0 bottom-0 w-[calc(100%-24rem)]" onClick={() => setShowInfo(false)} />
+                </div>
             )}
+
 
             {/* 5. New Chat Dialog */}
             {showNewChatDialog && (
@@ -487,6 +547,16 @@ export default function ChatLayout() {
                 incomingCallerId={incomingCall ? otherUserId : null}
                 onMessageClick={(convId) => setActiveConversationId(convId)}
             />
+
+            {/* Mobile Bottom Nav */}
+            {showSidebar && (
+                <BottomNav
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    onSettingsClick={() => setShowSettings(true)}
+                    userAvatar={supabaseAvatar || user?.imageUrl}
+                />
+            )}
 
         </div>
     );
@@ -543,7 +613,7 @@ function InfoPanelWrapper({
     };
 
     return (
-        <div className="hidden lg:block w-80 flex-none border-l border-zinc-800 bg-zinc-900">
+        <div className="hidden lg:block w-80 flex-none border-l border-zinc-800 bg-zinc-900 h-full">
             <InfoPanel
                 name={activeConv.name}
                 recipientId={activeConv.recipient_id}

@@ -74,11 +74,20 @@ export function useCall() {
     useEffect(() => {
         if (!user) return;
 
+        let isMounted = true;
+        let retryTimeout: ReturnType<typeof setTimeout>;
+
         // Use stable peer ID (cleaned user ID without session suffix)
         const myPeerId = user.id.replace(/[^a-zA-Z0-9]/g, '');
 
         const createPeer = (attempt: number) => {
-            // Creating Peer
+            if (!isMounted) return;
+
+            // Cleaning previous peer if exists
+            if (peerRef.current) {
+                peerRef.current.destroy();
+                peerRef.current = null;
+            }
 
             const newPeer = new Peer(myPeerId, {
                 debug: 1,
@@ -91,11 +100,17 @@ export function useCall() {
             });
 
             newPeer.on('open', () => {
+                if (!isMounted) {
+                    newPeer.destroy();
+                    return;
+                }
 
                 setPeerReady(true);
             });
 
             newPeer.on('call', (call) => {
+                if (!isMounted) return;
+
 
                 incomingCallRef.current = call;
                 callStateRef.current = 'INCOMING';
@@ -115,12 +130,11 @@ export function useCall() {
                 }
 
                 call.on('close', () => {
-
-                    performCleanup();
+                    if (isMounted) performCleanup();
                 });
                 call.on('error', (err) => {
                     console.error('[useCall] Incoming call error:', err);
-                    performCleanup();
+                    if (isMounted) performCleanup();
                 });
             });
 
@@ -129,29 +143,33 @@ export function useCall() {
 
                 // Handle "ID taken" by waiting and retrying
                 if (err.type === 'unavailable-id' && attempt < 3) {
+                    if (!isMounted) return;
 
                     newPeer.destroy();
-                    setTimeout(() => {
-                        initAttemptRef.current = attempt + 1;
-                        createPeer(attempt + 1);
+                    retryTimeout = setTimeout(() => {
+                        if (isMounted) {
+                            initAttemptRef.current = attempt + 1;
+                            createPeer(attempt + 1);
+                        }
                     }, 2000);
                 }
             });
 
             newPeer.on('disconnected', () => {
-
-                setPeerReady(false);
+                if (isMounted) setPeerReady(false);
             });
 
             peerRef.current = newPeer;
-            setPeer(newPeer);
+            if (isMounted) setPeer(newPeer);
         };
 
         createPeer(0);
 
         return () => {
-
+            isMounted = false;
+            if (retryTimeout) clearTimeout(retryTimeout);
             if (peerRef.current) {
+
                 peerRef.current.destroy();
                 peerRef.current = null;
             }

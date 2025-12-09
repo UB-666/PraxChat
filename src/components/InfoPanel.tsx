@@ -205,28 +205,31 @@ export default function InfoPanel({
                         </div>
                     </div>
 
-                    {/* Block/Clear Actions */}
-                    <div className="pt-6 flex gap-3">
-                        <button
-                            onClick={handleBlockClick}
-                            className={`flex-1 py-2 px-3 rounded-xl border text-sm flex flex-col items-center gap-2 group transition-all ${isBlocked
-                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10'
-                                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5'
-                                }`}
-                        >
-                            <span className="text-xl group-hover:scale-110 transition-transform">
-                                {isBlocked ? '✅' : '🚫'}
-                            </span>
-                            <span>{isBlocked ? 'Unblock' : 'Block'}</span>
-                        </button>
-                        <button
-                            onClick={handleClearClick}
-                            className="flex-1 py-2 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5 transition-all text-sm flex flex-col items-center gap-2 group"
-                        >
-                            <span className="text-xl group-hover:scale-110 transition-transform">🗑️</span>
-                            <span>Clear Chat</span>
-                        </button>
-                    </div>
+                </div>
+            </div>
+
+            {/* Sticky Footer for Actions */}
+            <div className="p-6 border-t border-zinc-800 bg-zinc-900 mt-auto shrink-0">
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleBlockClick}
+                        className={`flex-1 py-3 px-3 rounded-xl border text-sm flex flex-col items-center gap-1.5 group transition-all ${isBlocked
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5'
+                            }`}
+                    >
+                        <span className="text-xl group-hover:scale-110 transition-transform">
+                            {isBlocked ? '✅' : '🚫'}
+                        </span>
+                        <span className="font-medium">{isBlocked ? 'Unblock' : 'Block'}</span>
+                    </button>
+                    <button
+                        onClick={handleClearClick}
+                        className="flex-1 py-3 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5 transition-all text-sm flex flex-col items-center gap-1.5 group"
+                    >
+                        <span className="text-xl group-hover:scale-110 transition-transform">🗑️</span>
+                        <span className="font-medium">Clear Chat</span>
+                    </button>
                 </div>
             </div>
 
